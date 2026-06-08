@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy"
+    content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://*.steamstatic.com https://*.akamaihd.net; connect-src 'self' https://api.steampowered.com https://steamcommunity.com; font-src 'self'; frame-src 'none'; object-src 'none'; base-uri 'self';">
+  <title>CaseBase — CS2 Inventory Tracker</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- Login Screen -->
+<div id="login-screen">
+  <div class="login-logo">
+    <div class="logo-icon-large">🎮</div>
+    <h1>CaseBase</h1>
+    <p>CS2 Skin Inventory Tracker</p>
+  </div>
+
+  <div class="login-card api-key-card-wide" id="api-key-card" style="display:none;">
+    <h3>One-time setup — Steam API Key</h3>
+
+    <div class="api-key-steps">
+      <div class="api-key-step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          Open <strong>steamcommunity.com/dev/apikey</strong> in your browser<br>
+          <span class="step-note">You must be logged into Steam in your browser</span>
+        </div>
+      </div>
+      <div class="api-key-step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          Enter any domain (e.g. <code>localhost</code>) and click <strong>Register</strong>
+        </div>
+      </div>
+      <div class="api-key-step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          Copy the key shown and paste it below
+        </div>
+      </div>
+    </div>
+
+    <div class="form-group" style="margin-top:4px;">
+      <label>Your Steam Web API Key</label>
+      <div style="position:relative;">
+        <input type="password" id="api-key-input" placeholder="Paste key here…" maxlength="64" autocomplete="off">
+        <button id="toggle-key-visibility" title="Show/hide key"
+          style="position:absolute; right:10px; top:50%; transform:translateY(-50%); background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:15px;">👁</button>
+      </div>
+    </div>
+
+    <button class="btn btn-primary" id="save-api-key-btn" style="margin-top:4px;">Save &amp; Continue →</button>
+
+    <div class="api-key-security-note">
+      🔒 Your key is encrypted by your OS keychain and never stored in plain text on disk.
+      Only you can read it.
+    </div>
+  </div>
+
+  <div class="login-card" id="login-card">
+    <h3>Sign in to access your inventory</h3>
+    <button class="btn btn-steam" id="steam-login-btn">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M11.979 0C5.678 0 .511 4.86.022 11.037l6.432 2.658c.545-.371 1.203-.59 1.912-.59.063 0 .125.004.188.006l2.861-4.142V8.91c0-2.495 2.028-4.524 4.524-4.524 2.494 0 4.524 2.029 4.524 4.524s-2.03 4.523-4.524 4.523h-.105l-4.076 2.911c0 .052.004.105.004.159 0 1.875-1.515 3.396-3.39 3.396-1.635 0-3.016-1.173-3.331-2.727L.436 15.27C1.862 20.307 6.486 24 11.979 24c6.627 0 11.999-5.373 11.999-12S18.606 0 11.979 0zM7.54 18.21l-1.473-.61c.262.543.714.999 1.314 1.25 1.297.539 2.793-.076 3.332-1.375.263-.63.264-1.319.005-1.949s-.75-1.121-1.377-1.383c-.624-.26-1.29-.249-1.878-.03l1.523.63c.956.4 1.409 1.5 1.009 2.455-.397.957-1.497 1.41-2.455 1.012H7.54zm11.415-9.303c0-1.662-1.353-3.015-3.015-3.015-1.665 0-3.015 1.353-3.015 3.015 0 1.665 1.35 3.015 3.015 3.015 1.663 0 3.015-1.35 3.015-3.015zm-5.273-.005c0-1.252 1.013-2.266 2.265-2.266 1.249 0 2.266 1.014 2.266 2.266 0 1.251-1.017 2.265-2.266 2.265-1.252 0-2.265-1.014-2.265-2.265z"/>
+      </svg>
+      Sign in via Steam
+    </button>
+    <p style="font-size:11px; color:var(--text-muted); text-align:center;">
+      Uses Steam's official OpenID 2.0 — no passwords stored
+    </p>
+  </div>
+</div>
+
+<!-- Main App -->
+<div id="app" style="display:none;">
+  <!-- Sidebar -->
+  <nav id="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon">🎮</div>
+      <h1>CaseBase</h1>
+    </div>
+
+    <div class="sidebar-user" id="sidebar-user">
+      <div style="color:var(--text-muted); font-size:12px;">Not signed in</div>
+    </div>
+
+    <div class="sidebar-nav">
+      <div class="nav-item active" data-panel="inventory">
+        <span class="nav-icon">🎒</span> Inventory
+      </div>
+      <div class="nav-item" data-panel="portfolio">
+        <span class="nav-icon">📈</span> Portfolio
+      </div>
+      <div class="nav-item" data-panel="friends">
+        <span class="nav-icon">👥</span> Friends
+      </div>
+      <div class="nav-item" data-panel="alerts">
+        <span class="nav-icon">🔔</span> Price Alerts
+      </div>
+      <div class="nav-item" data-panel="settings">
+        <span class="nav-icon">⚙️</span> Settings
+      </div>
+    </div>
+
+    <div class="sidebar-footer">
+      <button class="btn-logout" id="logout-btn">Sign Out</button>
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <div id="main-content">
+    <!-- Top Bar -->
+    <div class="top-bar">
+      <h2 id="panel-title">Inventory</h2>
+      <div class="top-bar-actions" id="top-bar-actions">
+        <div id="refresh-progress" style="display:none; align-items:center; gap:10px;">
+          <div class="spinner"></div>
+          <span id="progress-text" style="font-size:12px; color:var(--text-muted);">Fetching prices…</span>
+          <div style="width:120px;">
+            <div class="progress-bar-wrap"><div class="progress-bar" id="progress-bar"></div></div>
+          </div>
+        </div>
+        <button class="btn btn-secondary btn-sm" id="refresh-btn">↻ Refresh</button>
+        <button class="btn btn-secondary btn-sm" id="export-csv-btn">⬇ CSV</button>
+        <button class="btn btn-secondary btn-sm" id="export-json-btn">⬇ JSON</button>
+      </div>
+    </div>
+
+    <!-- Content Area -->
+    <div id="content-area">
+
+      <!-- Inventory Panel -->
+      <div class="panel active" id="panel-inventory">
+        <!-- Shown when viewing a friend's inventory instead of own -->
+        <div id="viewing-profile-banner" style="display:none;" class="viewing-banner">
+          <img id="viewing-avatar" src="" alt="" class="viewing-avatar">
+          <div>
+            Viewing <strong id="viewing-name"></strong>'s inventory
+          </div>
+          <button class="btn btn-secondary btn-sm" id="back-to-own-btn">← Back to my inventory</button>
+        </div>
+
+        <div class="stats-bar" id="stats-bar">
+          <div class="stat-card">
+            <div class="stat-label">Total Items</div>
+            <div class="stat-value" id="stat-count">—</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Total Value (USD)</div>
+            <div class="stat-value" id="stat-value">—</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Marketable</div>
+            <div class="stat-value blue" id="stat-marketable">—</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Active Alerts</div>
+            <div class="stat-value orange" id="stat-alerts">—</div>
+          </div>
+        </div>
+
+        <div class="toolbar">
+          <div class="search-input-wrap">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="search-input" placeholder="Search skins…" maxlength="100">
+          </div>
+          <select class="filter-select" id="wear-filter">
+            <option value="">All Wears</option>
+            <option value="Factory New">Factory New</option>
+            <option value="Minimal Wear">Minimal Wear</option>
+            <option value="Field-Tested">Field-Tested</option>
+            <option value="Well-Worn">Well-Worn</option>
+            <option value="Battle-Scarred">Battle-Scarred</option>
+          </select>
+          <select class="filter-select" id="sort-select">
+            <option value="name">Sort: Name</option>
+            <option value="price-desc">Sort: Price ↓</option>
+            <option value="price-asc">Sort: Price ↑</option>
+          </select>
+        </div>
+
+        <div class="inventory-grid" id="inventory-grid">
+          <div class="empty-state">
+            <div class="empty-icon">🎒</div>
+            <h3>No inventory loaded</h3>
+            <p>Click Refresh to import your CS2 inventory from Steam.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Portfolio Panel -->
+      <div class="panel" id="panel-portfolio">
+        <div class="portfolio-stats-row" id="portfolio-stats-row">
+          <div class="portfolio-stat-card">
+            <div class="portfolio-stat-label">Current Value</div>
+            <div class="portfolio-stat-value" id="port-current-value">—</div>
+          </div>
+          <div class="portfolio-stat-card">
+            <div class="portfolio-stat-label">All-time Change</div>
+            <div class="portfolio-stat-value" id="port-change-abs">—</div>
+          </div>
+          <div class="portfolio-stat-card">
+            <div class="portfolio-stat-label">Change %</div>
+            <div class="portfolio-stat-value" id="port-change-pct">—</div>
+          </div>
+          <div class="portfolio-stat-card">
+            <div class="portfolio-stat-label">Items Tracked</div>
+            <div class="portfolio-stat-value" id="port-item-count">—</div>
+          </div>
+        </div>
+        <div class="portfolio-chart-wrap">
+          <canvas id="portfolio-chart"></canvas>
+          <p id="portfolio-chart-empty" style="display:none; text-align:center; color:var(--text-muted); font-size:13px; margin-top:40px;">
+            No portfolio history yet.<br>
+            Refresh your inventory to start tracking value over time.
+          </p>
+        </div>
+      </div>
+
+      <!-- Friends Panel -->
+      <div class="panel" id="panel-friends">
+        <div class="friend-add-form">
+          <div class="form-group" style="flex:1;">
+            <label>Steam Profile URL or SteamID64</label>
+            <input type="text" id="friend-url-input"
+              placeholder="steamcommunity.com/id/username  or  steamcommunity.com/profiles/76561198…"
+              maxlength="300">
+          </div>
+          <div class="form-group" style="align-self:end;">
+            <button class="btn btn-primary" id="add-friend-btn">
+              <span id="add-friend-btn-text">+ Add Profile</span>
+            </button>
+          </div>
+        </div>
+        <p style="font-size:11px; color:var(--text-muted); margin-bottom:20px;">
+          Only public inventories can be viewed. Ask your friend to set their Steam inventory to <strong>Public</strong> in Steam → Privacy Settings.
+        </p>
+        <div class="friends-grid" id="friends-grid">
+          <div class="empty-state">
+            <div class="empty-icon">👥</div>
+            <h3>No profiles tracked yet</h3>
+            <p>Paste a Steam profile URL or SteamID64 above to start tracking a friend's inventory.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Alerts Panel -->
+      <div class="panel" id="panel-alerts">
+        <div class="alert-form" id="alert-create-form">
+          <div class="form-group">
+            <label>Skin Name (market hash)</label>
+            <input type="text" id="alert-skin-input" placeholder="e.g. AK-47 | Redline (Field-Tested)" maxlength="200">
+          </div>
+          <div class="form-group">
+            <label>Target Price (USD)</label>
+            <input type="number" id="alert-price-input" placeholder="0.00" min="0.01" step="0.01" max="999999">
+          </div>
+          <div class="form-group">
+            <label>Direction</label>
+            <select id="alert-dir-select">
+              <option value="below">Drops Below</option>
+              <option value="above">Rises Above</option>
+            </select>
+          </div>
+          <div class="form-group" style="align-self:end;">
+            <button class="btn btn-primary" id="create-alert-btn">+ Add Alert</button>
+          </div>
+        </div>
+
+        <div class="alerts-list" id="alerts-list">
+          <div class="empty-state">
+            <div class="empty-icon">🔔</div>
+            <h3>No alerts set</h3>
+            <p>Add a price alert above to get OS notifications when a skin crosses your target price.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Settings Panel -->
+      <div class="panel" id="panel-settings">
+        <div class="settings-section">
+          <h3>Steam API Key</h3>
+          <div class="settings-row">
+            <div>
+              <div class="settings-label">API Key Status</div>
+              <div class="settings-desc" id="api-key-status">Checking…</div>
+            </div>
+            <button class="btn btn-secondary btn-sm" id="change-api-key-btn">Change Key</button>
+          </div>
+          <div id="api-key-change-form" style="display:none; margin-top:12px; display:none;">
+            <div class="form-group" style="margin-bottom:10px;">
+              <input type="password" id="settings-api-key-input" placeholder="Paste new Steam API key" maxlength="64">
+            </div>
+            <button class="btn btn-primary btn-sm" id="settings-save-key-btn">Save Key</button>
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <h3>Preferences</h3>
+          <div class="settings-row">
+            <div>
+              <div class="settings-label">Price Alerts</div>
+              <div class="settings-desc">Enable OS desktop notifications for price alerts</div>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="pref-alerts-enabled" checked>
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          <div class="settings-row">
+            <div>
+              <div class="settings-label">Auto-Refresh Interval</div>
+              <div class="settings-desc">Minutes between automatic inventory refreshes</div>
+            </div>
+            <select style="width:120px;" id="pref-refresh-interval">
+              <option value="15">15 min</option>
+              <option value="30" selected>30 min</option>
+              <option value="60">1 hour</option>
+              <option value="120">2 hours</option>
+              <option value="0">Disabled</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <h3>Export</h3>
+          <div class="settings-row">
+            <div>
+              <div class="settings-label">Export Inventory</div>
+              <div class="settings-desc">Save your inventory data to a file</div>
+            </div>
+            <div style="display:flex; gap:8px;">
+              <button class="btn btn-secondary btn-sm" id="settings-export-csv">CSV</button>
+              <button class="btn btn-secondary btn-sm" id="settings-export-json">JSON</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /content-area -->
+  </div><!-- /main-content -->
+</div><!-- /app -->
+
+<!-- Skin Detail Modal -->
+<div class="modal-overlay" id="skin-modal">
+  <div class="modal">
+    <button class="modal-close" id="modal-close-btn">✕</button>
+    <div class="modal-header">
+      <img class="modal-img" id="modal-img" src="" alt="">
+      <div class="modal-title-block">
+        <div class="modal-name" id="modal-name">—</div>
+        <div class="modal-wear" id="modal-wear">—</div>
+        <div class="modal-price-row">
+          <div class="modal-price" id="modal-price">—</div>
+          <div class="modal-volume" id="modal-volume"></div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-body">
+      <div class="modal-tabs">
+        <div class="modal-tab active" data-tab="chart">Price History</div>
+        <div class="modal-tab" data-tab="info">Item Info</div>
+        <div class="modal-tab" data-tab="alert">Set Alert</div>
+      </div>
+      <div class="modal-tab-panel active" id="modal-tab-chart">
+        <div class="chart-container">
+          <canvas id="price-chart"></canvas>
+        </div>
+        <p id="chart-empty" style="text-align:center; color:var(--text-muted); font-size:12px; margin-top:8px; display:none;">
+          No history yet. Price snapshots are recorded on each refresh.
+        </p>
+      </div>
+      <div class="modal-tab-panel" id="modal-tab-info">
+        <table style="width:100%; border-collapse:collapse; font-size:13px;">
+          <tbody id="modal-info-table"></tbody>
+        </table>
+      </div>
+      <div class="modal-tab-panel" id="modal-tab-alert">
+        <div style="display:flex; flex-direction:column; gap:14px;">
+          <div class="form-group">
+            <label>Target Price (USD)</label>
+            <input type="number" id="modal-alert-price" placeholder="0.00" min="0.01" step="0.01" max="999999">
+          </div>
+          <div class="form-group">
+            <label>Notify when price</label>
+            <select id="modal-alert-dir">
+              <option value="below">Drops Below</option>
+              <option value="above">Rises Above</option>
+            </select>
+          </div>
+          <button class="btn btn-primary" id="modal-create-alert-btn">Create Alert</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast container -->
+<div id="toast-container"></div>
+
+<script src="app.js"></script>
+</body>
+</html>

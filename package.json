@@ -1,0 +1,76 @@
+{
+  "name": "casebase",
+  "version": "1.0.0",
+  "description": "CS2 Skin Inventory Tracker",
+  "main": "main/main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "NODE_ENV=development electron .",
+    "build": "electron-builder build",
+    "build:linux": "electron-builder build --linux",
+    "build:win": "electron-builder build --win",
+    "build:mac": "electron-builder build --mac",
+    "postinstall": "node scripts/download-chartjs.js",
+    "init-db": "node main/db/init.js"
+  },
+  "keywords": [
+    "cs2",
+    "steam",
+    "inventory",
+    "electron"
+  ],
+  "author": {
+    "name": "Trevor Stapp",
+    "email": "stapp.trevor22@gmail.com"
+  },
+  "homepage": "https://github.com/tstapp24/casebase-app",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tstapp24/casebase-app.git"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.6.7",
+    "electron-store": "^8.2.0",
+    "openid": "^2.0.7"
+  },
+  "devDependencies": {
+    "electron": "^42.3.3",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.casebase.app",
+    "productName": "CaseBase",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main/**/*",
+      "renderer/**/*",
+      "db/**/*",
+      "node_modules/**/*"
+    ],
+    "linux": {
+      "target": [
+        "AppImage"
+      ],
+      "category": "Utility"
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "publisherName": "CaseBase"
+    },
+    "mac": {
+      "target": [
+        "dmg"
+      ],
+      "category": "public.app-category.utilities"
+    },
+    "publish": {
+      "provider": "github",
+      "releaseType": "release"
+    }
+  }
+}
