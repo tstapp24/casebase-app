@@ -84,6 +84,13 @@ function createWindow() {
 }
 
 function setupAutoUpdater(mainWindow) {
+  // We don't code-sign Windows builds, so skip the signature verification entirely.
+  // _verifyUpdateCodeSignature is electron-updater's documented override point.
+  // Returning null means "no error — proceed with install."
+  if (process.platform === 'win32') {
+    autoUpdater._verifyUpdateCodeSignature = () => Promise.resolve(null);
+  }
+
   autoUpdater.on('checking-for-update', () => console.log('[updater] Checking for update…'));
   autoUpdater.on('update-available', (info) => {
     console.log('[updater] Update available:', info.version);
