@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CaseBase — CS2 Skin Inventory Tracker</title>
+<meta name="description" content="Track your CS2 skin inventory with live Steam Market prices, price alerts, and portfolio analytics. Free desktop app for Windows, macOS and Linux.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Rajdhani:wght@400;500;600;700&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --green:#3DFF8F;
+  --green-dim:rgba(61,255,143,0.12);
+  --green-border:rgba(61,255,143,0.25);
+  --bg:#0A0A0A;
+  --bg2:#111111;
+  --bg3:#181818;
+  --border:rgba(255,255,255,0.07);
+  --text:#E8E8E8;
+  --muted:#888;
+  --card-radius:14px;
+}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;overflow-x:hidden;line-height:1.6}
+
+/* GRID BG */
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(61,255,143,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(61,255,143,0.03) 1px,transparent 1px);background-size:60px 60px;pointer-events:none;z-index:0}
+
+/* NAV */
+nav{position:fixed;top:0;left:0;right:0;z-index:100;padding:0 5%;height:64px;display:flex;align-items:center;justify-content:space-between;background:rgba(10,10,10,0.85);backdrop-filter:blur(12px);border-bottom:1px solid var(--border)}
+.nav-logo{font-family:'Orbitron',monospace;font-weight:900;font-size:16px;color:var(--green);letter-spacing:3px;text-decoration:none}
+.nav-links{display:flex;align-items:center;gap:28px}
+.nav-links a{color:var(--muted);text-decoration:none;font-size:13px;font-family:'Rajdhani',sans-serif;font-weight:600;letter-spacing:1px;text-transform:uppercase;transition:color 0.2s}
+.nav-links a:hover{color:var(--text)}
+.nav-cta{background:var(--green);color:#000;padding:8px 20px;border-radius:8px;font-family:'Rajdhani',sans-serif;font-weight:700;font-size:13px;letter-spacing:1px;text-transform:uppercase;text-decoration:none;transition:opacity 0.2s}
+.nav-cta:hover{opacity:0.85;color:#000}
+
+/* HERO */
+.hero{position:relative;z-index:1;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:100px 5% 80px}
+.hero-badge{display:inline-flex;align-items:center;gap:8px;background:var(--green-dim);border:1px solid var(--green-border);border-radius:999px;padding:6px 16px;font-size:12px;color:var(--green);font-family:'Rajdhani',sans-serif;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:28px}
+.hero-badge span{width:7px;height:7px;border-radius:50%;background:var(--green);animation:pulse 2s ease infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
+.hero h1{font-family:'Orbitron',monospace;font-weight:900;font-size:clamp(52px,9vw,96px);color:var(--green);letter-spacing:6px;line-height:1;margin-bottom:20px;text-transform:uppercase}
+.hero-sub{font-size:clamp(16px,2vw,20px);color:var(--muted);max-width:520px;line-height:1.7;margin-bottom:44px;font-weight:300}
+.hero-sub strong{color:var(--text);font-weight:500}
+.hero-buttons{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;margin-bottom:60px}
+.btn-primary{background:var(--green);color:#000;padding:14px 32px;border-radius:10px;font-family:'Rajdhani',sans-serif;font-weight:700;font-size:15px;letter-spacing:1.5px;text-transform:uppercase;text-decoration:none;transition:opacity 0.2s;display:flex;align-items:center;gap:10px}
+.btn-primary:hover{opacity:0.85}
+.btn-secondary{background:transparent;color:var(--text);padding:14px 32px;border-radius:10px;font-family:'Rajdhani',sans-serif;font-weight:700;font-size:15px;letter-spacing:1.5px;text-transform:uppercase;text-decoration:none;border:1px solid var(--border);transition:border-color 0.2s,color 0.2s;display:flex;align-items:center;gap:10px}
+.btn-secondary:hover{border-color:var(--green-border);color:var(--green)}
+.hero-platforms{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:12px;letter-spacing:1px;font-family:'Rajdhani',sans-serif;font-weight:600;text-transform:uppercase}
+.platform-dot{width:3px;height:3px;border-radius:50%;background:var(--muted)}
+
+/* MOCK APP PREVIEW */
+.preview-wrap{position:relative;z-index:1;padding:0 5% 100px}
+.preview-glow{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:600px;height:300px;background:radial-gradient(ellipse,rgba(61,255,143,0.08) 0%,transparent 70%);pointer-events:none}
+.app-window{max-width:820px;margin:0 auto;background:var(--bg2);border:1px solid var(--border);border-radius:16px;overflow:hidden;position:relative}
+.app-titlebar{background:#161616;padding:12px 16px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border)}
+.titlebar-dot{width:12px;height:12px;border-radius:50%}
+.titlebar-title{flex:1;text-align:center;font-size:12px;color:var(--muted);font-family:'Rajdhani',sans-serif;letter-spacing:1px}
+.app-body{padding:24px}
+.app-stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px}
+.app-stat{background:var(--bg3);border-radius:10px;padding:14px 16px}
+.app-stat-label{font-size:10px;color:var(--muted);font-family:'Rajdhani',sans-serif;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px}
+.app-stat-val{font-size:20px;font-weight:500;color:var(--text)}
+.app-stat-val.g{color:var(--green)}
+.app-skins{display:flex;flex-direction:column;gap:8px}
+.app-skin{background:var(--bg3);border-radius:10px;padding:12px 16px;display:flex;align-items:center;gap:12px;border:1px solid var(--border)}
+.skin-bar{width:3px;height:40px;border-radius:2px;flex-shrink:0}
+.skin-ico{font-size:22px;width:40px;text-align:center}
+.skin-inf{flex:1}
+.skin-n{font-size:13px;font-weight:500;color:var(--text);font-family:'Rajdhani',sans-serif;letter-spacing:0.5px}
+.skin-w{font-size:10px;padding:2px 8px;border-radius:999px;font-family:'Rajdhani',sans-serif;font-weight:600;letter-spacing:0.5px;display:inline-block;margin-top:3px}
+.skin-p{font-size:14px;font-weight:500;color:var(--text);text-align:right}
+.skin-ch{font-size:11px;text-align:right;margin-top:2px}
+.up{color:#3DFF8F}.dn{color:#FF5C5C}
+
+/* STATS BAR */
+.stats-bar{position:relative;z-index:1;border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:28px 5%;display:flex;justify-content:center;gap:64px;flex-wrap:wrap;background:var(--bg2)}
+.stat-item{text-align:center}
+.stat-num{font-family:'Orbitron',monospace;font-size:28px;font-weight:700;color:var(--green);letter-spacing:2px}
+.stat-lbl{font-size:12px;color:var(--muted);font-family:'Rajdhani',sans-serif;letter-spacing:1.5px;text-transform:uppercase;margin-top:4px}
+
+/* FEATURES */
+.section{position:relative;z-index:1;padding:100px 5%}
+.section-label{font-family:'Rajdhani',sans-serif;font-size:12px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--green);margin-bottom:14px}
+.section-title{font-family:'Rajdhani',sans-serif;font-size:clamp(28px,4vw,44px);font-weight:700;color:var(--text);margin-bottom:14px;line-height:1.2}
+.section-sub{font-size:15px;color:var(--muted);max-width:480px;line-height:1.7}
+.features-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;margin-top:56px}
+.feat-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--card-radius);padding:28px 24px;transition:border-color 0.2s,transform 0.2s}
+.feat-card:hover{border-color:var(--green-border);transform:translateY(-3px)}
+.feat-icon{width:44px;height:44px;border-radius:10px;background:var(--green-dim);border:1px solid var(--green-border);display:flex;align-items:center;justify-content:center;font-size:20px;margin-bottom:18px}
+.feat-title{font-family:'Rajdhani',sans-serif;font-size:18px;font-weight:700;color:var(--text);margin-bottom:8px;letter-spacing:0.5px}
+.feat-desc{font-size:13px;color:var(--muted);line-height:1.7}
+
+/* HOW IT WORKS */
+.how-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:0;margin-top:56px;position:relative}
+.how-grid::before{content:'';position:absolute;top:28px;left:16%;right:16%;height:1px;background:linear-gradient(90deg,transparent,var(--green-border),transparent);pointer-events:none}
+.how-step{text-align:center;padding:0 24px;position:relative}
+.step-num{width:56px;height:56px;border-radius:50%;background:var(--green-dim);border:1px solid var(--green-border);display:flex;align-items:center;justify-content:center;font-family:'Orbitron',monospace;font-weight:700;font-size:18px;color:var(--green);margin:0 auto 20px}
+.step-title{font-family:'Rajdhani',sans-serif;font-size:17px;font-weight:700;color:var(--text);margin-bottom:8px;letter-spacing:0.5px}
+.step-desc{font-size:13px;color:var(--muted);line-height:1.7}
+
+/* SECURITY */
+.security-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:56px}
+@media(max-width:600px){.security-grid{grid-template-columns:1fr}}
+.sec-item{display:flex;align-items:flex-start;gap:14px;background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:20px}
+.sec-check{width:28px;height:28px;border-radius:6px;background:var(--green-dim);border:1px solid var(--green-border);display:flex;align-items:center;justify-content:center;color:var(--green);font-size:14px;flex-shrink:0;margin-top:1px}
+.sec-text-title{font-family:'Rajdhani',sans-serif;font-size:15px;font-weight:700;color:var(--text);margin-bottom:4px}
+.sec-text-desc{font-size:12px;color:var(--muted);line-height:1.6}
+
+/* DOWNLOAD */
+.download-section{position:relative;z-index:1;padding:100px 5%;text-align:center}
+.download-card{max-width:640px;margin:0 auto;background:var(--bg2);border:1px solid var(--green-border);border-radius:20px;padding:56px 40px;position:relative;overflow:hidden}
+.download-card::before{content:'';position:absolute;top:-80px;left:50%;transform:translateX(-50%);width:400px;height:400px;background:radial-gradient(circle,rgba(61,255,143,0.07) 0%,transparent 65%);pointer-events:none}
+.download-title{font-family:'Orbitron',monospace;font-weight:900;font-size:32px;color:var(--green);letter-spacing:3px;text-transform:uppercase;margin-bottom:12px}
+.download-sub{font-size:15px;color:var(--muted);margin-bottom:40px;line-height:1.7}
+.download-buttons{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-bottom:24px}
+.dl-btn{display:flex;align-items:center;gap:10px;padding:13px 24px;border-radius:10px;font-family:'Rajdhani',sans-serif;font-weight:700;font-size:14px;letter-spacing:1px;text-transform:uppercase;text-decoration:none;border:1px solid var(--border);color:var(--text);background:var(--bg3);transition:border-color 0.2s,color 0.2s}
+.dl-btn:hover{border-color:var(--green-border);color:var(--green)}
+.dl-btn-ico{font-size:18px}
+.dl-note{font-size:12px;color:var(--muted);margin-top:8px}
+
+/* FOOTER */
+footer{position:relative;z-index:1;border-top:1px solid var(--border);padding:32px 5%;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px}
+.footer-logo{font-family:'Orbitron',monospace;font-weight:900;font-size:14px;color:var(--green);letter-spacing:3px}
+.footer-links{display:flex;gap:24px}
+.footer-links a{font-size:12px;color:var(--muted);text-decoration:none;font-family:'Rajdhani',sans-serif;letter-spacing:1px;text-transform:uppercase;transition:color 0.2s}
+.footer-links a:hover{color:var(--text)}
+.footer-copy{font-size:12px;color:var(--muted);font-family:'Rajdhani',sans-serif;letter-spacing:0.5px}
+
+@media(max-width:768px){
+  .nav-links{display:none}
+  .app-stats-row{grid-template-columns:repeat(2,1fr)}
+  .stats-bar{gap:32px}
+  .how-grid::before{display:none}
+  .security-grid{grid-template-columns:1fr}
+  .download-card{padding:36px 20px}
+  .download-title{font-size:24px}
+}
+
+/* FADE IN */
+.fade-in{opacity:0;transform:translateY(24px);transition:opacity 0.6s ease,transform 0.6s ease}
+.fade-in.visible{opacity:1;transform:translateY(0)}
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="#" class="nav-logo">CASEBASE</a>
+  <div class="nav-links">
+    <a href="#features">Features</a>
+    <a href="#how">How it works</a>
+    <a href="#security">Security</a>
+    <a href="#download" class="nav-cta">Download</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-badge"><span></span> Free & open source</div>
+  <h1>CASEBASE</h1>
+  <p class="hero-sub">The desktop app that tracks your <strong>CS2 skin inventory</strong> with live Steam Market prices, price alerts, and full portfolio analytics.</p>
+  <div class="hero-buttons">
+    <a href="#download" class="btn-primary">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+      Download free
+    </a>
+    <a href="https://github.com/tstapp24/casebase-app" class="btn-secondary">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+      View on GitHub
+    </a>
+  </div>
+  <div class="hero-platforms">
+    <span>Windows</span><div class="platform-dot"></div>
+    <span>macOS</span><div class="platform-dot"></div>
+    <span>Linux</span>
+  </div>
+</section>
+
+<!-- APP PREVIEW -->
+<div class="preview-wrap">
+  <div class="preview-glow"></div>
+  <div class="app-window fade-in">
+    <div class="app-titlebar">
+      <div class="titlebar-dot" style="background:#FF5F57"></div>
+      <div class="titlebar-dot" style="background:#FFBD2E"></div>
+      <div class="titlebar-dot" style="background:#28CA41"></div>
+      <div class="titlebar-title">CaseBase — CS2 Inventory Tracker</div>
+    </div>
+    <div class="app-body">
+      <div class="app-stats-row">
+        <div class="app-stat"><div class="app-stat-label">Portfolio value</div><div class="app-stat-val g">$14,040.50</div></div>
+        <div class="app-stat"><div class="app-stat-label">Skins tracked</div><div class="app-stat-val">5</div></div>
+        <div class="app-stat"><div class="app-stat-label">Most valuable</div><div class="app-stat-val" style="font-size:14px;padding-top:4px">Dragon Lore</div></div>
+        <div class="app-stat"><div class="app-stat-label">Avg 24h change</div><div class="app-stat-val g">+1.8%</div></div>
+      </div>
+      <div class="app-skins">
+        <div class="app-skin">
+          <div class="skin-bar" style="background:#EB4B4B"></div>
+          <div class="skin-ico">🐉</div>
+          <div class="skin-inf">
+            <div class="skin-n">AWP | Dragon Lore</div>
+            <span class="skin-w" style="background:#EAF3DE;color:#3B6D11">Factory New</span>
+          </div>
+          <div><div class="skin-p">$8,200.00</div><div class="skin-ch up">▲ 1.1%</div></div>
+        </div>
+        <div class="app-skin">
+          <div class="skin-bar" style="background:#E4AE39"></div>
+          <div class="skin-ico">🐺</div>
+          <div class="skin-inf">
+            <div class="skin-n">M4A4 | Howl</div>
+            <span class="skin-w" style="background:#EAF3DE;color:#639922">Minimal Wear</span>
+          </div>
+          <div><div class="skin-p">$3,100.00</div><div class="skin-ch up">▲ 0.8%</div></div>
+        </div>
+        <div class="app-skin">
+          <div class="skin-bar" style="background:#EB4B4B"></div>
+          <div class="skin-ico">🐍</div>
+          <div class="skin-inf">
+            <div class="skin-n">AK-47 | Fire Serpent</div>
+            <span class="skin-w" style="background:#FAEEDA;color:#BA7517">Field-Tested</span>
+          </div>
+          <div><div class="skin-p">$1,240.50</div><div class="skin-ch up">▲ 3.2%</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- STATS BAR -->
+<div class="stats-bar fade-in">
+  <div class="stat-item"><div class="stat-num">100%</div><div class="stat-lbl">Free forever</div></div>
+  <div class="stat-item"><div class="stat-num">3</div><div class="stat-lbl">Platforms</div></div>
+  <div class="stat-item"><div class="stat-num">Live</div><div class="stat-lbl">Steam prices</div></div>
+  <div class="stat-item"><div class="stat-num">0</div><div class="stat-lbl">Data collected</div></div>
+</div>
+
+<!-- FEATURES -->
+<section class="section" id="features">
+  <div class="fade-in">
+    <div class="section-label">Features</div>
+    <div class="section-title">Everything you need to track your skins</div>
+    <div class="section-sub">Built for CS2 players who want to know exactly what their inventory is worth at any moment.</div>
+  </div>
+  <div class="features-grid">
+    <div class="feat-card fade-in">
+      <div class="feat-icon">🎮</div>
+      <div class="feat-title">Steam auto-import</div>
+      <div class="feat-desc">Connect your Steam account via OpenID and CaseBase pulls your entire inventory automatically. No manual entry.</div>
+    </div>
+    <div class="feat-card fade-in">
+      <div class="feat-icon">💰</div>
+      <div class="feat-title">Live market prices</div>
+      <div class="feat-desc">Prices pulled directly from the Steam Market API and cached locally. Refresh whenever you want, respecting rate limits automatically.</div>
+    </div>
+    <div class="feat-card fade-in">
+      <div class="feat-icon">📈</div>
+      <div class="feat-title">Price history charts</div>
+      <div class="feat-desc">Every refresh builds your local price history. Watch trends over time with per-skin chart breakdowns powered by Chart.js.</div>
+    </div>
+    <div class="feat-card fade-in">
+      <div class="feat-icon">🔔</div>
+      <div class="feat-title">Price alerts</div>
+      <div class="feat-desc">Set a target price on any skin and get a native OS desktop notification the moment the threshold is crossed.</div>
+    </div>
+    <div class="feat-card fade-in">
+      <div class="feat-icon">📊</div>
+      <div class="feat-title">Portfolio analytics</div>
+      <div class="feat-desc">Total portfolio value, 24h change, top performers and losers — all at a glance on the main dashboard.</div>
+    </div>
+    <div class="feat-card fade-in">
+      <div class="feat-icon">👥</div>
+      <div class="feat-title">Friends comparison</div>
+      <div class="feat-desc">Add friends by SteamID or profile URL and compare inventories. Private leaderboard ranked by total value, item count, or top item.</div>
+    </div>
+    <div class="feat-card fade-in">
+      <div class="feat-icon">💸</div>
+      <div class="feat-title">Sell on Skinport</div>
+      <div class="feat-desc">One-click Sell button on every item takes you straight to the Skinport listing for that skin so you can move it fast.</div>
+    </div>
+    <div class="feat-card fade-in">
+      <div class="feat-icon">🎓</div>
+      <div class="feat-title">Pricing factors guide</div>
+      <div class="feat-desc">Expandable breakdown of what drives each skin's value — float range, rarity, pattern index, StatTrak, and market demand — with your item's real data inline.</div>
+    </div>
+    <div class="feat-card fade-in">
+      <div class="feat-icon">📤</div>
+      <div class="feat-title">Export CSV & JSON</div>
+      <div class="feat-desc">Export your full inventory with current prices to CSV or JSON any time. Your data, your format.</div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section class="section" id="how" style="background:var(--bg2);border-top:1px solid var(--border);border-bottom:1px solid var(--border)">
+  <div class="fade-in" style="text-align:center">
+    <div class="section-label" style="text-align:center">How it works</div>
+    <div class="section-title" style="text-align:center">Up and running in 3 steps</div>
+  </div>
+  <div class="how-grid fade-in">
+    <div class="how-step">
+      <div class="step-num">1</div>
+      <div class="step-title">Get your Steam API key</div>
+      <div class="step-desc">Grab a free key from steamcommunity.com/dev/apikey. CaseBase encrypts it using your OS keychain — never stored in plain text.</div>
+    </div>
+    <div class="how-step">
+      <div class="step-num">2</div>
+      <div class="step-title">Connect your account</div>
+      <div class="step-desc">Log in via Steam's official OpenID flow. CaseBase reads your public inventory using your SteamID64.</div>
+    </div>
+    <div class="how-step">
+      <div class="step-num">3</div>
+      <div class="step-title">Track your portfolio</div>
+      <div class="step-desc">Your skins load automatically with live prices, wear conditions, rarity tiers, and your total portfolio value.</div>
+    </div>
+  </div>
+</section>
+
+<!-- SECURITY -->
+<section class="section" id="security">
+  <div class="fade-in">
+    <div class="section-label">Security</div>
+    <div class="section-title">Built with security first</div>
+    <div class="section-sub">Your Steam API key and inventory data never leave your machine. CaseBase is a local desktop app — no cloud, no accounts, no tracking.</div>
+  </div>
+  <div class="security-grid fade-in">
+    <div class="sec-item">
+      <div class="sec-check">✓</div>
+      <div><div class="sec-text-title">OS keychain encryption</div><div class="sec-text-desc">Your Steam API key is encrypted with Electron's safeStorage API using your OS keychain — the same system that protects browser passwords.</div></div>
+    </div>
+    <div class="sec-item">
+      <div class="sec-check">✓</div>
+      <div><div class="sec-text-title">No network access from renderer</div><div class="sec-text-desc">All Steam API calls happen in the sandboxed main process. The UI layer has no access to Node.js or the network directly.</div></div>
+    </div>
+    <div class="sec-item">
+      <div class="sec-check">✓</div>
+      <div><div class="sec-text-title">Strict Content Security Policy</div><div class="sec-text-desc">CSP blocks all inline scripts, eval(), and external resources outside of Steam's domains. No XSS attack surface.</div></div>
+    </div>
+    <div class="sec-item">
+      <div class="sec-check">✓</div>
+      <div><div class="sec-text-title">Local SQLite storage only</div><div class="sec-text-desc">Inventory, price history, and alerts are stored in a local SQLite database on your device. No telemetry, no analytics, no cloud sync.</div></div>
+    </div>
+    <div class="sec-item">
+      <div class="sec-check">✓</div>
+      <div><div class="sec-text-title">Steam OpenID — no passwords</div><div class="sec-text-desc">Login uses Steam's official OpenID 2.0 protocol. CaseBase never sees or stores your Steam password.</div></div>
+    </div>
+    <div class="sec-item">
+      <div class="sec-check">✓</div>
+      <div><div class="sec-text-title">Parameterized SQL queries</div><div class="sec-text-desc">Every database query uses parameterized statements. No string concatenation means no SQL injection risk.</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- DOWNLOAD -->
+<section class="download-section" id="download">
+  <div class="download-card fade-in">
+    <div class="download-title">Download</div>
+    <p class="download-sub">Free for Windows, macOS, and Linux. No sign-up required — just download and run.</p>
+    <div class="download-buttons">
+      <a id="dl-win" href="https://github.com/tstapp24/casebase-app/releases/latest" class="dl-btn">
+        <span class="dl-btn-ico">🪟</span> Windows (.exe)
+      </a>
+      <a id="dl-mac" href="https://github.com/tstapp24/casebase-app/releases/latest" class="dl-btn">
+        <span class="dl-btn-ico">🍎</span> macOS (.zip)
+      </a>
+      <a id="dl-linux" href="https://github.com/tstapp24/casebase-app/releases/latest" class="dl-btn">
+        <span class="dl-btn-ico">🐧</span> Linux (.AppImage)
+      </a>
+    </div>
+    <div class="dl-note">All releases on <a href="https://github.com/tstapp24/casebase-app/releases" style="color:var(--green);text-decoration:none">GitHub Releases</a> · <span id="version-tag">latest</span></div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-logo">CASEBASE</div>
+  <div class="footer-links">
+    <a href="https://github.com/tstapp24/casebase-app">GitHub</a>
+    <a href="#features">Features</a>
+    <a href="#download">Download</a>
+  </div>
+  <div class="footer-copy">Free & open source · Not affiliated with Valve or Steam</div>
+</footer>
+
+<script>
+// Fade-in on scroll
+const obs = new IntersectionObserver(entries => {
+  entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+}, { threshold: 0.1 });
+document.querySelectorAll('.fade-in').forEach(el => obs.observe(el));
+
+// Pull latest release from GitHub and update download buttons automatically.
+// Falls back to the /releases/latest page if the API is unavailable.
+(async function loadLatestRelease() {
+  try {
+    const res = await fetch('https://api.github.com/repos/tstapp24/casebase-app/releases/latest');
+    if (!res.ok) return;
+    const release = await res.json();
+
+    const win   = release.assets.find(a => a.name.endsWith('.exe'));
+    const mac   = release.assets.find(a => a.name.endsWith('.zip') || a.name.endsWith('.dmg'));
+    const linux = release.assets.find(a => a.name.endsWith('.AppImage'));
+
+    if (win)   document.getElementById('dl-win').href   = win.browser_download_url;
+    if (mac)   document.getElementById('dl-mac').href   = mac.browser_download_url;
+    if (linux) document.getElementById('dl-linux').href = linux.browser_download_url;
+
+    if (release.tag_name) {
+      document.getElementById('version-tag').textContent = release.tag_name;
+    }
+  } catch (_) {
+    // Network error or API limit — fallback hrefs already point to /releases/latest
+  }
+})();
+</script>
+</body>
+</html>
