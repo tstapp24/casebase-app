@@ -5,6 +5,9 @@ on:
     tags:
       - 'v*'
 
+permissions:
+  contents: write
+
 jobs:
   release:
     runs-on: ${{ matrix.os }}
@@ -24,7 +27,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
 
       - run: npm ci
@@ -32,8 +35,4 @@ jobs:
       - name: Build and publish
         run: npm run ${{ matrix.script }}
         env:
-          # GH_TOKEN needs repo scope — add it in GitHub → Settings → Secrets → Actions
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
-          # macOS code signing (optional — omit if you don't have a Developer ID cert)
-          # CSC_LINK: ${{ secrets.CSC_LINK }}         # base64-encoded .p12
-          # CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
