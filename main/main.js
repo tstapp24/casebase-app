@@ -85,7 +85,16 @@ function createWindow() {
 
 function setupAutoUpdater(mainWindow) {
   autoUpdater.on('checking-for-update', () => console.log('[updater] Checking for update…'));
-  autoUpdater.on('update-available', (info) => console.log('[updater] Update available:', info.version));
+  autoUpdater.on('update-available', (info) => {
+    console.log('[updater] Update available:', info.version);
+    dialog.showMessageBox(mainWindow, {
+      type: 'info',
+      title: 'Update Available',
+      message: `CaseBase ${info.version} is available.`,
+      detail: 'Downloading now in the background. You\'ll be prompted to restart when it\'s ready.',
+      buttons: ['OK'],
+    });
+  });
   autoUpdater.on('update-not-available', () => console.log('[updater] Up to date.'));
   autoUpdater.on('error', (err) => console.error('[updater] Error:', err));
   autoUpdater.on('download-progress', (p) =>

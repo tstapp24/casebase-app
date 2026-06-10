@@ -184,7 +184,9 @@ async function viewFriendInventory(profile) {
   state.prices = {};
   updateViewingBanner(profile);
   showPanel('inventory');
-  await loadInventory(false);
+  const staleSeconds = 300; // refresh if cached data is older than 5 minutes
+  const age = profile.last_refreshed ? (Date.now() / 1000) - profile.last_refreshed : Infinity;
+  await loadInventory(age > staleSeconds);
 }
 
 async function loadInventory(forceRefresh = false) {
