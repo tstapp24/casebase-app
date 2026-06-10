@@ -235,15 +235,47 @@
             </button>
           </div>
         </div>
-        <p style="font-size:11px; color:var(--text-muted); margin-bottom:20px;">
+        <p style="font-size:11px; color:var(--text-muted); margin-bottom:16px;">
           Only public inventories can be viewed. Ask your friend to set their Steam inventory to <strong>Public</strong> in Steam → Privacy Settings.
         </p>
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;">
+          <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.8px; color:var(--text-muted);">Tracked Profiles</div>
+          <button class="btn btn-secondary btn-sm" id="compare-toggle-btn">⚔ Compare</button>
+        </div>
         <div class="friends-grid" id="friends-grid">
           <div class="empty-state">
             <div class="empty-icon">👥</div>
             <h3>No profiles tracked yet</h3>
             <p>Paste a Steam profile URL or SteamID64 above to start tracking a friend's inventory.</p>
           </div>
+        </div>
+
+        <!-- Comparison leaderboard (shown on demand) -->
+        <div id="compare-section" style="display:none; margin-top:24px;">
+          <div class="compare-header">
+            <div class="compare-title">Inventory Comparison</div>
+            <div class="compare-sort-wrap">
+              <button class="btn btn-secondary btn-sm compare-sort-btn active" data-sort="value">By Value</button>
+              <button class="btn btn-secondary btn-sm compare-sort-btn" data-sort="items">By Items</button>
+              <button class="btn btn-secondary btn-sm compare-sort-btn" data-sort="top">By Top Item</button>
+            </div>
+            <button class="btn btn-secondary btn-sm" id="compare-close-btn" style="color:var(--text-muted);">✕ Close</button>
+          </div>
+          <div id="compare-loading" style="display:none; padding:24px; text-align:center; color:var(--text-muted); font-size:13px;">
+            <div class="spinner" style="margin:0 auto 10px;"></div>Loading inventory stats…
+          </div>
+          <table class="compare-table">
+            <thead>
+              <tr>
+                <th>Rank</th>
+                <th>Player</th>
+                <th>Total Value</th>
+                <th>Items</th>
+                <th>Top Item</th>
+              </tr>
+            </thead>
+            <tbody id="compare-table-body"></tbody>
+          </table>
         </div>
       </div>
 
@@ -357,6 +389,9 @@
           <div class="modal-price" id="modal-price">—</div>
           <div class="modal-volume" id="modal-volume"></div>
         </div>
+        <button class="btn btn-skinport btn-sm" id="modal-sell-btn" style="display:none; margin-top:10px;">
+          Sell on Skinport ↗
+        </button>
       </div>
     </div>
     <div class="modal-body">
@@ -377,6 +412,12 @@
         <table style="width:100%; border-collapse:collapse; font-size:13px;">
           <tbody id="modal-info-table"></tbody>
         </table>
+        <div class="factors-accordion">
+          <button class="factors-accordion-toggle" id="factors-toggle-btn">
+            <span class="factors-arrow">▶</span> What affects this skin's value?
+          </button>
+          <div class="factors-content" id="factors-content" style="display:none;"></div>
+        </div>
       </div>
       <div class="modal-tab-panel" id="modal-tab-alert">
         <div style="display:flex; flex-direction:column; gap:14px;">
@@ -401,6 +442,7 @@
 <!-- Toast container -->
 <div id="toast-container"></div>
 
+<script src="pricing-factors.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

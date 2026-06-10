@@ -1,6 +1,6 @@
 'use strict';
 
-const { ipcMain, Notification, dialog } = require('electron');
+const { ipcMain, Notification, dialog, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
@@ -12,6 +12,7 @@ const {
   getCachedPrice, getPriceHistory,
   createAlert, getAlerts, getEnabledAlerts, markAlertTriggered, deleteAlert, toggleAlert,
   upsertTrackedProfile, getTrackedProfiles, getTrackedProfile, deleteTrackedProfile, touchProfileRefresh,
+  getProfileStats,
   savePortfolioSnapshot, getPortfolioHistory,
 } = require('../db/queries');
 const { storeApiKey, hasApiKey, clearApiKey, getPreference, setPreference } = require('../storage');
@@ -247,6 +248,24 @@ function registerHandlers(mainWindow) {
     }
 
     return { canceled: false, filePath };
+  });
+
+  // ─── External Links ──────────────────────────────────────────────────────
+
+  handle('shell:open-external', async (rawUrl) => {
+    if (typeof rawUrl !== 'string') throw new Error('Invalid URL');
+    let parsed;
+    try { parsed = new URL(rawUrl); } catch { throw new Error('Invalid URL format'); }
+    if (parsed.hostname !== 'skinport.com') throw new Error('URL not allowed');
+    await shell.openExternal(rawUrl);
+    return true;
+  });
+
+  // ─── Profile Stats ────────────────────────────────────────────────────────
+
+  handle('profiles:stats', async (rawSteamId) => {
+    const steamId = validateSteamId(rawSteamId);
+    return getProfileStats(steamId);
   });
 
   // ─── Alert Checker ───────────────────────────────────────────────────────

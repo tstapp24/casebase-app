@@ -204,6 +204,30 @@ function touchProfileRefresh(steamId) {
     .run(steamId);
 }
 
+function getProfileStats(steamId) {
+  const items = getDatabase()
+    .prepare('SELECT * FROM inventory_items WHERE steam_id = ? AND marketable = 1')
+    .all(steamId);
+
+  let totalValue = 0;
+  let topItem = null;
+  let topPrice = -1;
+
+  for (const item of items) {
+    const cached = getCachedPrice(item.market_hash_name);
+    if (!cached?.lowest_price) continue;
+    const price = parseFloat(String(cached.lowest_price).replace(/[^0-9.]/g, ''));
+    if (isNaN(price)) continue;
+    totalValue += price;
+    if (price > topPrice) {
+      topPrice = price;
+      topItem = { name: item.name, iconUrl: item.icon_url, price };
+    }
+  }
+
+  return { itemCount: items.length, totalValue, topItem };
+}
+
 function savePortfolioSnapshot({ steamId, totalValue, itemCount }) {
   getDatabase()
     .prepare('INSERT INTO portfolio_snapshots (steam_id, total_value, item_count) VALUES (?, ?, ?)')
@@ -242,6 +266,7 @@ module.exports = {
   getTrackedProfile,
   deleteTrackedProfile,
   touchProfileRefresh,
+  getProfileStats,
   savePortfolioSnapshot,
   getPortfolioHistory,
 };

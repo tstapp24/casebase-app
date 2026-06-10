@@ -1,7 +1,8 @@
 'use strict';
 
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, dialog } = require('electron');
 const path = require('path');
+const { autoUpdater } = require('electron-updater');
 
 const { initDatabase, closeDatabase } = require('./db/database');
 const { registerHandlers, cleanup } = require('./ipc/handlers');
@@ -82,9 +83,36 @@ function createWindow() {
   return mainWindow;
 }
 
+function setupAutoUpdater(mainWindow) {
+  autoUpdater.on('checking-for-update', () => console.log('[updater] Checking for update…'));
+  autoUpdater.on('update-available', (info) => console.log('[updater] Update available:', info.version));
+  autoUpdater.on('update-not-available', () => console.log('[updater] Up to date.'));
+  autoUpdater.on('error', (err) => console.error('[updater] Error:', err));
+  autoUpdater.on('download-progress', (p) =>
+    console.log(`[updater] Download ${Math.round(p.percent)}% (${Math.round(p.bytesPerSecond / 1024)} KB/s)`),
+  );
+  autoUpdater.on('update-downloaded', async (info) => {
+    console.log('[updater] Update downloaded:', info.version);
+    const { response } = await dialog.showMessageBox(mainWindow, {
+      type: 'info',
+      title: 'Update Ready',
+      message: `CaseBase ${info.version} is ready to install.`,
+      detail: 'Restart now to apply the update, or continue and install on next launch.',
+      buttons: ['Restart Now', 'Later'],
+      defaultId: 0,
+      cancelId: 1,
+    });
+    if (response === 0) autoUpdater.quitAndInstall();
+  });
+
+  autoUpdater.checkForUpdatesAndNotify();
+}
+
 app.whenReady().then(() => {
   initDatabase();
-  createWindow();
+  const mainWindow = createWindow();
+
+  if (app.isPackaged) setupAutoUpdater(mainWindow);
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();

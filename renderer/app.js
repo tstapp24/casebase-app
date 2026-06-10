@@ -1,5 +1,25 @@
 'use strict';
 
+// ── Skinport ──────────────────────────────────────────────────────────────────
+// Change this one constant to swap your affiliate referral code
+const SKINPORT_AFFILIATE_URL = 'https://skinport.com/r/zeroday';
+
+function getSkinportUrl(marketHashName) {
+  try {
+    const ref = new URL(SKINPORT_AFFILIATE_URL).pathname.replace(/^\/r\//, '');
+    const u = new URL('https://skinport.com/market/730');
+    u.searchParams.set('search', marketHashName);
+    if (ref) u.searchParams.set('r', ref);
+    return u.toString();
+  } catch {
+    return SKINPORT_AFFILIATE_URL;
+  }
+}
+
+function openSkinport(marketHashName) {
+  ipc('shell:open-external', getSkinportUrl(marketHashName)).catch(err => toast(err.message, 'error'));
+}
+
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 function $(id) { return document.getElementById(id); }
@@ -42,6 +62,7 @@ const state = {
   activePanel: 'inventory',
   modalItem: null,
   refreshTimer: null,
+  compareSort: 'value',
 };
 
 // ── Panels ───────────────────────────────────────────────────────────────────
@@ -257,6 +278,13 @@ function renderInventory() {
       if (item) openModal(item);
     });
   });
+
+  grid.querySelectorAll('.btn-sell-skinport').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openSkinport(btn.dataset.mhn);
+    });
+  });
 }
 
 function skinCardHTML(item) {
@@ -287,6 +315,7 @@ function skinCardHTML(item) {
         <div class="skin-name" title="${escapeHtml(item.name)}">${escapeHtml(item.name)}</div>
         <div class="skin-wear">${escapeHtml(item.wear || '—')}</div>
         ${priceHtml}
+        ${item.marketable ? `<button class="btn-sell-skinport" data-mhn="${escapeHtml(item.market_hash_name)}">Sell on Skinport ↗</button>` : ''}
       </div>
     </div>
   `;
@@ -369,6 +398,7 @@ function renderAlerts(alerts) {
         </div>
         <div class="alert-status ${status}">${statusLabel}</div>
         <div class="alert-actions">
+          <button class="btn btn-skinport btn-sm sell-alert-btn" data-mhn="${escapeHtml(a.market_hash_name)}">Sell ↗</button>
           ${!a.triggered ? `<button class="btn btn-secondary btn-sm toggle-alert-btn" data-id="${a.id}" data-enabled="${a.enabled}">${a.enabled ? 'Disable' : 'Enable'}</button>` : ''}
           <button class="btn btn-danger btn-sm delete-alert-btn" data-id="${a.id}">Delete</button>
         </div>
@@ -396,6 +426,10 @@ function renderAlerts(alerts) {
         loadAlerts();
       } catch (err) { toast(err.message, 'error'); }
     });
+  });
+
+  list.querySelectorAll('.sell-alert-btn').forEach(btn => {
+    btn.addEventListener('click', () => openSkinport(btn.dataset.mhn));
   });
 }
 
@@ -437,6 +471,22 @@ function openModal(item) {
     </tr>
   `).join('');
 
+  // Sell button — only for marketable items
+  const sellBtn = $('modal-sell-btn');
+  if (item.marketable) {
+    sellBtn.style.display = 'inline-block';
+    sellBtn.dataset.mhn = item.market_hash_name;
+  } else {
+    sellBtn.style.display = 'none';
+  }
+
+  // Pricing factors accordion — collapsed by default for each new item
+  const factorsContent = $('factors-content');
+  factorsContent.style.display = 'none';
+  factorsContent.innerHTML = renderPricingFactors(item);
+  const arrow = $('factors-toggle-btn').querySelector('.factors-arrow');
+  if (arrow) arrow.textContent = '▶';
+
   // Switch to chart tab
   switchModalTab('chart');
 
@@ -472,10 +522,17 @@ async function loadFriends() {
     toast(`Could not load profiles: ${err.message}`, 'error');
     return;
   }
-  renderFriends(profiles);
+
+  const statsMap = {};
+  await Promise.all(profiles.map(async p => {
+    try { statsMap[p.steam_id] = await ipc('profiles:stats', p.steam_id); }
+    catch { /* stats unavailable — cards render without value data */ }
+  }));
+
+  renderFriends(profiles, statsMap);
 }
 
-function renderFriends(profiles) {
+function renderFriends(profiles, statsMap = {}) {
   const grid = $('friends-grid');
   if (!profiles.length) {
     grid.innerHTML = `<div class="empty-state">
@@ -488,6 +545,18 @@ function renderFriends(profiles) {
 
   grid.innerHTML = profiles.map(p => {
     const avatarSrc = sanitizeUrl(p.avatar_url) || '';
+    const stats = statsMap[p.steam_id];
+    const statsHtml = stats ? `
+      <div class="friend-stats">
+        <div class="friend-stat">
+          <div class="friend-stat-label">Value</div>
+          <div class="friend-stat-value">${formatUSD(stats.totalValue)}</div>
+        </div>
+        <div class="friend-stat">
+          <div class="friend-stat-label">Items</div>
+          <div class="friend-stat-value" style="color:var(--neon-blue);">${stats.itemCount}</div>
+        </div>
+      </div>` : '';
     return `
       <div class="friend-card" data-steam-id="${escapeHtml(p.steam_id)}">
         <button class="friend-remove-btn" data-steam-id="${escapeHtml(p.steam_id)}" title="Remove">✕</button>
@@ -499,6 +568,7 @@ function renderFriends(profiles) {
             <div class="friend-steamid">${escapeHtml(p.steam_id)}</div>
           </div>
         </div>
+        ${statsHtml}
         <div class="friend-actions">
           <button class="btn btn-secondary btn-sm view-inventory-btn" data-steam-id="${escapeHtml(p.steam_id)}" style="flex:1;">
             🎒 View Inventory
@@ -546,6 +616,89 @@ function backToOwnInventory() {
   state.prices = {};
   updateViewingBanner(null);
   loadInventory(false);
+}
+
+// ── Comparison ────────────────────────────────────────────────────────────────
+
+async function loadCompare() {
+  if (!state.currentUser) return;
+  $('compare-loading').style.display = 'block';
+  $('compare-table-body').innerHTML = '';
+
+  let friends = [];
+  try { friends = await ipc('profiles:list'); } catch {}
+
+  const allProfiles = [{ ...state.currentUser, isOwn: true }, ...friends];
+
+  const statsMap = {};
+  await Promise.all(allProfiles.map(async p => {
+    try { statsMap[p.steam_id] = await ipc('profiles:stats', p.steam_id); }
+    catch { statsMap[p.steam_id] = { totalValue: 0, itemCount: 0, topItem: null }; }
+  }));
+
+  $('compare-loading').style.display = 'none';
+  renderCompare(allProfiles, statsMap);
+}
+
+function renderCompare(profiles, statsMap) {
+  const rows = profiles.map(p => ({
+    steamId: p.steam_id,
+    personaName: p.persona_name || 'Unknown',
+    avatarUrl: p.avatar_url || '',
+    isOwn: !!p.isOwn,
+    ...(statsMap[p.steam_id] || { totalValue: 0, itemCount: 0, topItem: null }),
+  }));
+
+  if (state.compareSort === 'items') rows.sort((a, b) => b.itemCount - a.itemCount);
+  else if (state.compareSort === 'top') rows.sort((a, b) => (b.topItem?.price || 0) - (a.topItem?.price || 0));
+  else rows.sort((a, b) => b.totalValue - a.totalValue);
+
+  $('compare-table-body').innerHTML = rows.map((row, i) => {
+    const avatarSrc = sanitizeUrl(row.avatarUrl) || '';
+    const youBadge = row.isOwn ? ' <span class="compare-you">you</span>' : '';
+    const topItem = row.topItem;
+    const topItemHtml = topItem
+      ? `<img class="compare-item-thumb" src="${escapeHtml(sanitizeUrl(topItem.iconUrl) || '')}" alt="" onerror="this.style.opacity='0.2'">
+         <span class="compare-top-name" title="${escapeHtml(topItem.name)}">${escapeHtml(topItem.name)}</span>
+         <span class="compare-top-price">${formatUSD(topItem.price)}</span>`
+      : '<span style="color:var(--text-muted)">—</span>';
+    return `
+      <tr class="compare-row${row.isOwn ? ' compare-own' : ''}">
+        <td class="compare-rank">#${i + 1}</td>
+        <td class="compare-player">
+          <img class="compare-avatar" src="${escapeHtml(avatarSrc)}" alt="" onerror="this.style.opacity='0.3'">
+          <span class="compare-name">${escapeHtml(row.personaName)}${youBadge}</span>
+        </td>
+        <td class="compare-value">${formatUSD(row.totalValue)}</td>
+        <td class="compare-items">${row.itemCount}</td>
+        <td class="compare-top-item">${topItemHtml}</td>
+      </tr>
+    `;
+  }).join('');
+}
+
+// ── Pricing Factors ───────────────────────────────────────────────────────────
+
+function renderPricingFactors(item) {
+  if (!window.PRICING_FACTORS || !window.PRICING_FACTORS.length) return '';
+  return window.PRICING_FACTORS.map(factor => {
+    const data = factor.getItemData(item);
+    let badgeHtml = '';
+    if (data) {
+      const colorStyle = data.color ? ` style="color:${escapeHtml(data.color)};border-color:${escapeHtml(data.color)}40;"` : '';
+      badgeHtml = `<span class="factor-badge"${colorStyle}>${escapeHtml(data.label)}</span>`;
+    }
+    return `
+      <div class="factor-card">
+        <div class="factor-header">
+          <span class="factor-icon">${factor.icon}</span>
+          <span class="factor-title">${escapeHtml(factor.title)}</span>
+          ${badgeHtml}
+        </div>
+        <p class="factor-desc">${escapeHtml(factor.description)}</p>
+      </div>
+    `;
+  }).join('');
 }
 
 // ── Portfolio ─────────────────────────────────────────────────────────────────
@@ -679,6 +832,32 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Back to own inventory from friend view
   $('back-to-own-btn').addEventListener('click', backToOwnInventory);
 
+  // Comparison — toggle open
+  $('compare-toggle-btn').addEventListener('click', async () => {
+    const section = $('compare-section');
+    const isOpen = section.style.display !== 'none';
+    if (isOpen) {
+      section.style.display = 'none';
+    } else {
+      section.style.display = 'block';
+      await loadCompare();
+    }
+  });
+
+  // Comparison — close button
+  $('compare-close-btn').addEventListener('click', () => {
+    $('compare-section').style.display = 'none';
+  });
+
+  // Comparison — sort buttons
+  document.querySelectorAll('.compare-sort-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      state.compareSort = btn.dataset.sort;
+      document.querySelectorAll('.compare-sort-btn').forEach(b => b.classList.toggle('active', b === btn));
+      await loadCompare();
+    });
+  });
+
   // Add friend
   $('add-friend-btn').addEventListener('click', async () => {
     const input = $('friend-url-input').value.trim();
@@ -716,6 +895,21 @@ document.addEventListener('DOMContentLoaded', async () => {
   $('skin-modal').addEventListener('click', (e) => { if (e.target === $('skin-modal')) closeModal(); });
   document.querySelectorAll('.modal-tab').forEach(tab => {
     tab.addEventListener('click', () => switchModalTab(tab.dataset.tab));
+  });
+
+  // Modal — Sell on Skinport button
+  $('modal-sell-btn').addEventListener('click', () => {
+    const mhn = $('modal-sell-btn').dataset.mhn;
+    if (mhn) openSkinport(mhn);
+  });
+
+  // Modal — pricing factors accordion
+  $('factors-toggle-btn').addEventListener('click', () => {
+    const content = $('factors-content');
+    const arrow = $('factors-toggle-btn').querySelector('.factors-arrow');
+    const opening = content.style.display === 'none';
+    content.style.display = opening ? 'block' : 'none';
+    if (arrow) arrow.textContent = opening ? '▼' : '▶';
   });
 
   // Modal alert creation

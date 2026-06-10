@@ -28,6 +28,8 @@ const INVOKE_CHANNELS = new Set([
   'profiles:get-inventory',
   'portfolio:snapshot',
   'portfolio:history',
+  'shell:open-external',
+  'profiles:stats',
 ]);
 
 // Channels main → renderer may push events on

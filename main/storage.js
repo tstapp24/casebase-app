@@ -1,4 +1,4 @@
-'use strict';
+ 'use strict';
 
 const { safeStorage } = require('electron');
 const Store = require('electron-store');

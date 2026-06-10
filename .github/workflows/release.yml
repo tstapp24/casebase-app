@@ -1,0 +1,39 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            script: publish:linux
+          - os: windows-latest
+            script: publish:win
+          - os: macos-latest
+            script: publish:mac
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Build and publish
+        run: npm run ${{ matrix.script }}
+        env:
+          # GH_TOKEN needs repo scope — add it in GitHub → Settings → Secrets → Actions
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          # macOS code signing (optional — omit if you don't have a Developer ID cert)
+          # CSC_LINK: ${{ secrets.CSC_LINK }}         # base64-encoded .p12
+          # CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
