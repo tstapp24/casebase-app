@@ -75,7 +75,7 @@
     "publish": {
       "provider": "github",
       "owner": "tstapp24",
-      "repo": "casebase",
+      "repo": "casebase-app",
       "releaseType": "release"
     }
   }
