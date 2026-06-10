@@ -29,22 +29,14 @@ function upsertInventoryItems(steamId, items) {
       (steam_id, asset_id, class_id, instance_id, market_hash_name, name, type,
        rarity, rarity_color, wear, icon_url, tradable, marketable, last_updated)
     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,strftime('%s','now'))
-    ON CONFLICT(steam_id, asset_id) DO UPDATE SET
-      market_hash_name = excluded.market_hash_name,
-      name             = excluded.name,
-      type             = excluded.type,
-      rarity           = excluded.rarity,
-      rarity_color     = excluded.rarity_color,
-      wear             = excluded.wear,
-      icon_url         = excluded.icon_url,
-      tradable         = excluded.tradable,
-      marketable       = excluded.marketable,
-      last_updated     = excluded.last_updated
   `);
+  const deleteAll = db.prepare('DELETE FROM inventory_items WHERE steam_id = ?');
 
   db.exec('BEGIN');
   try {
+    deleteAll.run(steamId);
     for (const item of items) {
+      if (!item.marketHashName) continue;
       insert.run(
         steamId,
         item.assetId,
