@@ -4,19 +4,8 @@
 // Change this one constant to swap your affiliate referral code
 const SKINPORT_AFFILIATE_URL = 'https://skinport.com/r/zeroday';
 
-function getSkinportUrl() {
-  try {
-    const ref = new URL(SKINPORT_AFFILIATE_URL).pathname.replace(/^\/r\//, '');
-    const u = new URL('https://skinport.com/sell');
-    if (ref) u.searchParams.set('r', ref);
-    return u.toString();
-  } catch {
-    return SKINPORT_AFFILIATE_URL;
-  }
-}
-
 function openSkinport() {
-  ipc('shell:open-external', getSkinportUrl()).catch(err => toast(err.message, 'error'));
+  ipc('shell:open-external', SKINPORT_AFFILIATE_URL).catch(err => toast(err.message, 'error'));
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
