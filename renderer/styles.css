@@ -1086,6 +1086,26 @@ input::placeholder { color: var(--text-muted); }
   background: rgba(0, 255, 135, 0.08);
   border-color: var(--neon-green);
 }
+.btn-buy-skinport {
+  display: block;
+  width: 100%;
+  margin-top: 5px;
+  padding: 4px 0;
+  background: transparent;
+  border: 1px solid rgba(100, 180, 255, 0.3);
+  color: #64b4ff;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.btn-buy-skinport:hover {
+  background: rgba(100, 180, 255, 0.08);
+  border-color: #64b4ff;
+}
 
 /* ── Pricing Factors Accordion ── */
 .factors-accordion {

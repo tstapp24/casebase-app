@@ -4,8 +4,19 @@
 // Change this one constant to swap your affiliate referral code
 const SKINPORT_AFFILIATE_URL = 'https://skinport.com/r/zeroday';
 
-function openSkinport() {
+function openSkinportSell() {
   ipc('shell:open-external', SKINPORT_AFFILIATE_URL).catch(err => toast(err.message, 'error'));
+}
+
+function openSkinportBuy(marketHashName) {
+  try {
+    const u = new URL('https://skinport.com/market/730');
+    u.searchParams.set('search', marketHashName);
+    u.searchParams.set('r', 'zeroday');
+    ipc('shell:open-external', u.toString()).catch(err => toast(err.message, 'error'));
+  } catch {
+    ipc('shell:open-external', SKINPORT_AFFILIATE_URL).catch(err => toast(err.message, 'error'));
+  }
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -270,7 +281,14 @@ function renderInventory() {
   grid.querySelectorAll('.btn-sell-skinport').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
-      openSkinport(btn.dataset.mhn);
+      openSkinportSell();
+    });
+  });
+
+  grid.querySelectorAll('.btn-buy-skinport').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openSkinportBuy(btn.dataset.mhn);
     });
   });
 }
@@ -303,7 +321,8 @@ function skinCardHTML(item) {
         <div class="skin-name" title="${escapeHtml(item.name)}">${escapeHtml(item.name)}</div>
         <div class="skin-wear">${escapeHtml(item.wear || '—')}</div>
         ${priceHtml}
-        ${item.marketable ? `<button class="btn-sell-skinport" data-mhn="${escapeHtml(item.market_hash_name)}">Sell on Skinport ↗</button>` : ''}
+        ${item.marketable && !state.viewingSteamId ? `<button class="btn-sell-skinport" data-mhn="${escapeHtml(item.market_hash_name)}">Sell on Skinport ↗</button>` : ''}
+        ${item.marketable && state.viewingSteamId ? `<button class="btn-buy-skinport" data-mhn="${escapeHtml(item.market_hash_name)}">Buy on Skinport ↗</button>` : ''}
       </div>
     </div>
   `;
@@ -417,7 +436,7 @@ function renderAlerts(alerts) {
   });
 
   list.querySelectorAll('.sell-alert-btn').forEach(btn => {
-    btn.addEventListener('click', () => openSkinport(btn.dataset.mhn));
+    btn.addEventListener('click', () => openSkinportSell());
   });
 }
 
@@ -459,11 +478,12 @@ function openModal(item) {
     </tr>
   `).join('');
 
-  // Sell button — only for marketable items
+  // Sell/Buy button — sell for own inventory, buy for friend's inventory
   const sellBtn = $('modal-sell-btn');
   if (item.marketable) {
     sellBtn.style.display = 'inline-block';
     sellBtn.dataset.mhn = item.market_hash_name;
+    sellBtn.textContent = state.viewingSteamId ? 'Buy on Skinport ↗' : 'Sell on Skinport ↗';
   } else {
     sellBtn.style.display = 'none';
   }
@@ -888,7 +908,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Modal — Sell on Skinport button
   $('modal-sell-btn').addEventListener('click', () => {
     const mhn = $('modal-sell-btn').dataset.mhn;
-    if (mhn) openSkinport(mhn);
+    if (!mhn) return;
+    if (state.viewingSteamId) openSkinportBuy(mhn);
+    else openSkinportSell();
   });
 
   // Modal — pricing factors accordion
