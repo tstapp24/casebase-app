@@ -1107,6 +1107,88 @@ input::placeholder { color: var(--text-muted); }
   border-color: #64b4ff;
 }
 
+/* ── Skinport Value CTA Banner ── */
+.skinport-value-cta {
+  margin: 0 16px 12px;
+  padding: 10px 16px;
+  background: linear-gradient(90deg, rgba(61,255,143,0.06) 0%, transparent 100%);
+  border: 1px solid var(--neon-green-dim);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+}
+.skinport-value-cta:hover {
+  border-color: var(--neon-green);
+  background: linear-gradient(90deg, rgba(61,255,143,0.1) 0%, transparent 100%);
+}
+.skinport-cta-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--neon-green);
+  font-family: var(--font);
+  letter-spacing: 0.3px;
+}
+.skinport-cta-arrow {
+  font-size: 16px;
+  opacity: 0.7;
+  transition: transform 0.15s;
+}
+.skinport-value-cta:hover .skinport-cta-arrow {
+  transform: translateX(4px);
+  opacity: 1;
+}
+.skinport-cta-hint {
+  margin-top: 3px;
+  font-size: 10px;
+  color: var(--text-muted);
+  letter-spacing: 0.3px;
+}
+
+/* ── Alert-triggered sell toast ── */
+.toast-alert-sell {
+  background: var(--bg-card);
+  border: 1px solid var(--neon-green-dim);
+  border-left: 3px solid var(--neon-green);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  max-width: 320px;
+  box-shadow: var(--shadow-card);
+  animation: slideIn 0.2s ease;
+  pointer-events: all;
+}
+.toast-alert-name {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.toast-alert-msg {
+  font-size: 11px;
+  color: var(--neon-green);
+  margin-bottom: 8px;
+}
+.toast-alert-sell-btn {
+  background: var(--neon-green);
+  color: #000;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 5px 12px;
+  font-size: 11px;
+  font-weight: 700;
+  font-family: var(--font);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.toast-alert-sell-btn:hover { opacity: 0.85; }
+
 /* ── Pricing Factors Accordion ── */
 .factors-accordion {
   margin-top: 18px;

@@ -4,6 +4,18 @@
 // Change this one constant to swap your affiliate referral code
 const SKINPORT_AFFILIATE_URL = 'https://skinport.com/r/zeroday';
 
+// ── Skinport copy config — edit these to A/B different messages ───────────────
+const SKINPORT_COPY = {
+  cardBtn:       'Sell for real money ↗',          // per-item card button (own inventory)
+  modalBtn:      'Sell on Skinport ↗',             // item-detail modal button (own inventory)
+  alertCardBtn:  'Cash out now ↗',                 // sell button on alert cards
+  alertToastBtn: 'Sell it now →',                  // sell button inside triggered-alert toast
+  // {value} is replaced with the formatted USD total
+  valueCta:      'Your skins are worth {value} — cash out on Skinport',
+  valueHint:     'New to Skinport? Sign up free and start selling in minutes.',
+};
+// ─────────────────────────────────────────────────────────────────────────────
+
 function openSkinportSell() {
   ipc('shell:open-external', SKINPORT_AFFILIATE_URL).catch(err => toast(err.message, 'error'));
 }
@@ -17,6 +29,24 @@ function openSkinportBuy(marketHashName) {
   } catch {
     ipc('shell:open-external', SKINPORT_AFFILIATE_URL).catch(err => toast(err.message, 'error'));
   }
+}
+
+function alertSellToast(marketHashName, price, targetPrice) {
+  const pct = targetPrice > 0 ? Math.round(((price - targetPrice) / targetPrice) * 100) : 0;
+  const container = $('toast-container');
+  const el = document.createElement('div');
+  el.className = 'toast toast-alert-sell';
+  el.innerHTML = `
+    <div class="toast-alert-name">${escapeHtml(marketHashName)}</div>
+    <div class="toast-alert-msg">${pct > 0 ? `Up ${pct}% past your target` : 'Hit your target'} — now ${escapeHtml(formatUSD(price))}</div>
+    <button class="toast-alert-sell-btn">${escapeHtml(SKINPORT_COPY.alertToastBtn)}</button>
+  `;
+  el.querySelector('.toast-alert-sell-btn').addEventListener('click', () => {
+    el.remove();
+    openSkinportSell();
+  });
+  container.appendChild(el);
+  setTimeout(() => el.remove(), 12000);
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -260,6 +290,16 @@ function renderInventory() {
   }
   $('stat-value').textContent = counted > 0 ? formatUSD(total) : '—';
 
+  // Value CTA — only for own inventory with a known total
+  const ctaBanner = $('skinport-value-cta');
+  if (total > 0 && !state.viewingSteamId) {
+    $('skinport-cta-text').textContent = SKINPORT_COPY.valueCta.replace('{value}', formatUSD(total));
+    $('skinport-cta-hint').textContent = SKINPORT_COPY.valueHint;
+    ctaBanner.style.display = 'block';
+  } else {
+    ctaBanner.style.display = 'none';
+  }
+
   if (items.length === 0) {
     grid.innerHTML = `<div class="empty-state">
       <div class="empty-icon">🎒</div>
@@ -323,7 +363,7 @@ function skinCardHTML(item) {
         <div class="skin-name" title="${escapeHtml(item.name)}">${escapeHtml(item.name)}</div>
         <div class="skin-wear">${escapeHtml(item.wear || '—')}</div>
         ${priceHtml}
-        ${item.marketable && !state.viewingSteamId ? `<button class="btn-sell-skinport" data-mhn="${escapeHtml(item.market_hash_name)}">Sell on Skinport ↗</button>` : ''}
+        ${item.marketable && !state.viewingSteamId ? `<button class="btn-sell-skinport" data-mhn="${escapeHtml(item.market_hash_name)}">${escapeHtml(SKINPORT_COPY.cardBtn)}</button>` : ''}
         ${item.marketable && state.viewingSteamId ? `<button class="btn-buy-skinport" data-mhn="${escapeHtml(item.market_hash_name)}">Buy on Skinport ↗</button>` : ''}
       </div>
     </div>
@@ -407,7 +447,7 @@ function renderAlerts(alerts) {
         </div>
         <div class="alert-status ${status}">${statusLabel}</div>
         <div class="alert-actions">
-          <button class="btn btn-skinport btn-sm sell-alert-btn" data-mhn="${escapeHtml(a.market_hash_name)}">Sell ↗</button>
+          <button class="btn btn-skinport btn-sm sell-alert-btn" data-mhn="${escapeHtml(a.market_hash_name)}">${escapeHtml(SKINPORT_COPY.alertCardBtn)}</button>
           ${!a.triggered ? `<button class="btn btn-secondary btn-sm toggle-alert-btn" data-id="${a.id}" data-enabled="${a.enabled}">${a.enabled ? 'Disable' : 'Enable'}</button>` : ''}
           <button class="btn btn-danger btn-sm delete-alert-btn" data-id="${a.id}">Delete</button>
         </div>
@@ -485,7 +525,7 @@ function openModal(item) {
   if (item.marketable) {
     sellBtn.style.display = 'inline-block';
     sellBtn.dataset.mhn = item.market_hash_name;
-    sellBtn.textContent = state.viewingSteamId ? 'Buy on Skinport ↗' : 'Sell on Skinport ↗';
+    sellBtn.textContent = state.viewingSteamId ? 'Buy on Skinport ↗' : SKINPORT_COPY.modalBtn;
   } else {
     sellBtn.style.display = 'none';
   }
@@ -839,6 +879,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Refresh button
   $('refresh-btn').addEventListener('click', () => loadInventory(true));
 
+  // Skinport value CTA banner
+  $('skinport-value-cta').addEventListener('click', () => openSkinportSell());
+
   // Back to own inventory from friend view
   $('back-to-own-btn').addEventListener('click', backToOwnInventory);
 
@@ -995,7 +1038,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Alert triggered events from main process
   window.api.on('alerts:triggered', ({ marketHashName, price, targetPrice, direction }) => {
-    toast(`Alert: ${marketHashName} is ${formatUSD(price)} (target: ${direction} ${formatUSD(targetPrice)})`, 'info', 6000);
+    toast(`Alert: ${marketHashName} hit ${formatUSD(price)}`, 'info', 4000);
+    if (direction === 'above' && !state.viewingSteamId) {
+      alertSellToast(marketHashName, price, targetPrice);
+    }
     if (state.activePanel === 'alerts') loadAlerts();
     // Update stat
     ipc('alerts:list', state.currentUser?.steam_id).then(alerts => {
