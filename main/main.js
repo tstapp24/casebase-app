@@ -98,13 +98,8 @@ function setupAutoUpdater(mainWindow) {
   autoUpdater.on('update-not-available', () => console.log('[updater] Up to date.'));
   autoUpdater.on('error', (err) => {
     console.error('[updater] Error:', err);
-    dialog.showMessageBox(mainWindow, {
-      type: 'error',
-      title: 'Update Check Failed',
-      message: 'CaseBase could not check for updates.',
-      detail: err.message,
-      buttons: ['OK'],
-    });
+    // Suppress "latest.yml not found" — this happens when a release is mid-upload.
+    // All other errors are also silent; updates are non-critical background checks.
   });
   autoUpdater.on('download-progress', (p) =>
     console.log(`[updater] Download ${Math.round(p.percent)}% (${Math.round(p.bytesPerSecond / 1024)} KB/s)`),

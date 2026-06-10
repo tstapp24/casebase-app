@@ -39,6 +39,7 @@ jobs:
 
   publish-release:
     needs: build
+    if: always() && needs.build.result != 'cancelled'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
