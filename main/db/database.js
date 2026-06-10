@@ -29,6 +29,11 @@ function initDatabase() {
   const schema = fs.readFileSync(schemaPath, 'utf8');
   db.exec(schema);
 
+  // Migrations — idempotent ALTER TABLE calls for existing databases
+  try {
+    db.exec("ALTER TABLE price_history ADD COLUMN source TEXT NOT NULL DEFAULT 'steam'");
+  } catch (_) { /* column already exists */ }
+
   return db;
 }
 

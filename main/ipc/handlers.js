@@ -5,16 +5,25 @@ const path = require('path');
 const fs = require('fs');
 
 const { steamLogin } = require('../steam/auth');
-const { getPlayerSummary, getInventory, batchGetMarketPrices, resolveProfileUrl } = require('../steam/api');
+const { getPlayerSummary, getInventory, resolveProfileUrl } = require('../steam/api');
+const { fetchSkinportItems } = require('../steam/skinport');
 const {
   upsertUser, getUser,
   upsertInventoryItems, getInventory: dbGetInventory,
-  getCachedPrice, getPriceHistory,
+  getPriceHistory,
+  bulkUpsertSkinportPrices, getSkinportCachedPrice, isSkinportCacheFresh,
+  recordPriceSnapshot,
   createAlert, getAlerts, getEnabledAlerts, markAlertTriggered, deleteAlert, toggleAlert,
   upsertTrackedProfile, getTrackedProfiles, getTrackedProfile, deleteTrackedProfile, touchProfileRefresh,
   getProfileStats,
   savePortfolioSnapshot, getPortfolioHistory,
 } = require('../db/queries');
+
+// Alert notification copy — edit here to change wording
+const ALERT_COPY = {
+  above: (name, price) => `${name} is now $${price.toFixed(2)} on Skinport — time to cash out`,
+  below: (name, price) => `${name} dropped to $${price.toFixed(2)} on Skinport`,
+};
 const { storeApiKey, hasApiKey, clearApiKey, getPreference, setPreference } = require('../storage');
 const {
   validateSteamId,
@@ -107,11 +116,46 @@ function registerHandlers(mainWindow) {
     if (rawNames.length > 500) throw new Error('Too many items requested at once');
     const names = rawNames.map(validateMarketHashName);
 
-    return batchGetMarketPrices(names, (done, total) => {
-      if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.webContents.send('prices:progress', { done, total });
+    // Refresh Skinport bulk cache if stale (fetchSkinportItems returns null when still fresh)
+    if (!isSkinportCacheFresh()) {
+      try {
+        const freshItems = await fetchSkinportItems();
+        if (freshItems && Array.isArray(freshItems)) {
+          bulkUpsertSkinportPrices(freshItems);
+          for (const item of freshItems) {
+            if (item.min_price != null) {
+              recordPriceSnapshot({
+                marketHashName: item.market_hash_name,
+                priceUsd: item.min_price,
+                volume: item.quantity ?? 0,
+                source: 'skinport',
+              });
+            }
+          }
+        }
+      } catch (err) {
+        console.error('[prices:fetch-batch] Skinport fetch failed, using cached data:', err.message);
       }
-    });
+    }
+
+    // Look up each requested item from local Skinport cache
+    const total = names.length;
+    const results = {};
+    for (let i = 0; i < names.length; i++) {
+      const name = names[i];
+      const row = getSkinportCachedPrice(name);
+      results[name] = {
+        lowestPrice: row?.min_price ?? null,
+        suggestedPrice: row?.suggested_price ?? null,
+        medianPrice: row?.median_price ?? null,
+        volume: row?.quantity ?? null,
+        fromSkinport: true,
+      };
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('prices:progress', { done: i + 1, total });
+      }
+    }
+    return results;
   });
 
   handle('prices:history', async (rawName) => {
@@ -189,11 +233,8 @@ function registerHandlers(mainWindow) {
     const marketable = items.filter(i => i.marketable);
     let total = 0;
     for (const item of marketable) {
-      const cached = getCachedPrice(item.market_hash_name);
-      if (cached?.lowest_price) {
-        const price = parseFloat(String(cached.lowest_price).replace(/[^0-9.]/g, ''));
-        if (!isNaN(price)) total += price;
-      }
+      const cached = getSkinportCachedPrice(item.market_hash_name);
+      if (cached?.min_price != null) total += cached.min_price;
     }
     savePortfolioSnapshot({ steamId, totalValue: total, itemCount: marketable.length });
     return { totalValue: total, itemCount: marketable.length };
@@ -280,15 +321,11 @@ function registerHandlers(mainWindow) {
       const alerts = getEnabledAlerts(steamId);
       if (alerts.length === 0) return;
 
-      // Get current prices from cache only to avoid extra API calls
-      const { getCachedPrice } = require('../db/queries');
-
       for (const alert of alerts) {
-        const cached = getCachedPrice(alert.market_hash_name);
-        if (!cached) continue;
+        const cached = getSkinportCachedPrice(alert.market_hash_name);
+        if (!cached || cached.min_price == null) continue;
 
-        const price = parseFloat((cached.lowest_price || '').replace(/[^0-9.]/g, ''));
-        if (isNaN(price)) continue;
+        const price = cached.min_price;
 
         const triggered =
           (alert.direction === 'above' && price >= alert.target_price) ||
@@ -298,7 +335,7 @@ function registerHandlers(mainWindow) {
           markAlertTriggered(alert.id);
           new Notification({
             title: 'CaseBase Price Alert',
-            body: `${alert.market_hash_name} is now $${price.toFixed(2)} (target: ${alert.direction} $${alert.target_price.toFixed(2)})`,
+            body: ALERT_COPY[alert.direction](alert.market_hash_name, price),
           }).show();
 
           if (mainWindow && !mainWindow.isDestroyed()) {

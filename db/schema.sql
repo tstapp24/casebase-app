@@ -72,6 +72,18 @@ CREATE INDEX IF NOT EXISTS idx_inventory_steam_id ON inventory_items(steam_id);
 CREATE INDEX IF NOT EXISTS idx_inventory_market_hash ON inventory_items(market_hash_name);
 CREATE INDEX IF NOT EXISTS idx_price_history_hash ON price_history(market_hash_name);
 CREATE INDEX IF NOT EXISTS idx_price_history_recorded ON price_history(recorded_at);
+-- Skinport bulk price cache (replaced per full fetch, ~5 min TTL)
+CREATE TABLE IF NOT EXISTS skinport_price_cache (
+  market_hash_name TEXT NOT NULL PRIMARY KEY,
+  min_price        REAL,
+  suggested_price  REAL,
+  median_price     REAL,
+  quantity         INTEGER,
+  fetched_at       INTEGER NOT NULL DEFAULT (strftime('%s','now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_skinport_cache_fetched ON skinport_price_cache(fetched_at);
+
 CREATE TABLE IF NOT EXISTS portfolio_snapshots (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   steam_id TEXT NOT NULL,

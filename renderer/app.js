@@ -68,9 +68,10 @@ async function ipc(channel, ...args) {
   return res.data;
 }
 
-function parsePrice(str) {
-  if (!str) return null;
-  const n = parseFloat(str.replace(/[^0-9.]/g, ''));
+function parsePrice(val) {
+  if (val == null) return null;
+  if (typeof val === 'number') return isNaN(val) ? null : val;
+  const n = parseFloat(String(val).replace(/[^0-9.]/g, ''));
   return isNaN(n) ? null : n;
 }
 
@@ -346,8 +347,10 @@ function skinCardHTML(item) {
       : `<div class="skin-price error">Not marketable</div>`;
   } else if (price.error) {
     priceHtml = `<div class="skin-price error">Price unavailable</div>`;
+  } else if (price.lowestPrice != null) {
+    priceHtml = `<div class="skin-price">${escapeHtml(formatUSD(price.lowestPrice))}</div>`;
   } else {
-    priceHtml = `<div class="skin-price">${escapeHtml(price.lowestPrice || '—')}</div>`;
+    priceHtml = `<div class="skin-price not-listed">Not on Skinport</div>`;
   }
 
   const imgSrc = sanitizeUrl(item.icon_url) || '';
@@ -390,7 +393,7 @@ async function fetchAllPrices() {
   const cleanup = window.api.on('prices:progress', ({ done, total }) => {
     const pct = Math.round((done / total) * 100);
     $('progress-bar').style.width = `${pct}%`;
-    $('progress-text').textContent = `Fetching prices… ${done}/${total}`;
+    $('progress-text').textContent = `Loading Skinport prices… ${done}/${total}`;
   });
 
   try {
@@ -494,8 +497,8 @@ function openModal(item) {
   $('modal-wear').textContent = item.wear || '—';
 
   if (price && !price.error) {
-    $('modal-price').textContent = price.lowestPrice || '—';
-    $('modal-volume').textContent = price.volume ? `${price.volume} sold` : '';
+    $('modal-price').textContent = price.lowestPrice != null ? formatUSD(price.lowestPrice) : 'Not on Skinport';
+    $('modal-volume').textContent = price.volume ? `${price.volume} listings` : '';
   } else {
     $('modal-price').textContent = '—';
     $('modal-volume').textContent = '';
@@ -510,7 +513,7 @@ function openModal(item) {
     ['Wear', item.wear],
     ['Tradable', item.tradable ? 'Yes' : 'No'],
     ['Marketable', item.marketable ? 'Yes' : 'No'],
-    ['Median Price', price?.medianPrice || '—'],
+    ['Median Price', price?.medianPrice != null ? formatUSD(price.medianPrice) : '—'],
   ];
 
   $('modal-info-table').innerHTML = rows.map(([k, v]) => `

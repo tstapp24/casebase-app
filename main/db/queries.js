@@ -95,13 +95,66 @@ function upsertPriceCache({ marketHashName, lowestPrice, medianPrice, volume }) 
   `).run(marketHashName, lowestPrice, medianPrice, volume);
 }
 
+// ─── Skinport Price Cache ─────────────────────────────────────────────────────
+
+const SKINPORT_CACHE_TTL_SECONDS = 300; // 5 minutes
+
+function bulkUpsertSkinportPrices(items) {
+  const db = getDatabase();
+  const stmt = db.prepare(`
+    INSERT INTO skinport_price_cache
+      (market_hash_name, min_price, suggested_price, median_price, quantity, fetched_at)
+    VALUES (?, ?, ?, ?, ?, strftime('%s','now'))
+    ON CONFLICT(market_hash_name) DO UPDATE SET
+      min_price       = excluded.min_price,
+      suggested_price = excluded.suggested_price,
+      median_price    = excluded.median_price,
+      quantity        = excluded.quantity,
+      fetched_at      = excluded.fetched_at
+  `);
+  db.exec('BEGIN');
+  try {
+    for (const item of items) {
+      stmt.run(
+        item.market_hash_name,
+        item.min_price ?? null,
+        item.suggested_price ?? null,
+        item.median_price ?? null,
+        item.quantity ?? null
+      );
+    }
+    db.exec('COMMIT');
+  } catch (err) {
+    db.exec('ROLLBACK');
+    throw err;
+  }
+}
+
+function getSkinportCachedPrice(marketHashName) {
+  return getDatabase()
+    .prepare('SELECT * FROM skinport_price_cache WHERE market_hash_name = ?')
+    .get(marketHashName) || null;
+}
+
+function getSkinportCacheAge() {
+  const row = getDatabase()
+    .prepare('SELECT MAX(fetched_at) AS newest FROM skinport_price_cache')
+    .get();
+  if (!row?.newest) return Infinity;
+  return Math.floor(Date.now() / 1000) - Number(row.newest);
+}
+
+function isSkinportCacheFresh() {
+  return getSkinportCacheAge() < SKINPORT_CACHE_TTL_SECONDS;
+}
+
 // ─── Price History ────────────────────────────────────────────────────────────
 
-function recordPriceSnapshot({ marketHashName, priceUsd, volume }) {
+function recordPriceSnapshot({ marketHashName, priceUsd, volume, source = 'steam' }) {
   return getDatabase().prepare(`
-    INSERT INTO price_history (market_hash_name, price_usd, volume, recorded_at)
-    VALUES (?, ?, ?, strftime('%s','now'))
-  `).run(marketHashName, priceUsd, volume);
+    INSERT INTO price_history (market_hash_name, price_usd, volume, source, recorded_at)
+    VALUES (?, ?, ?, ?, strftime('%s','now'))
+  `).run(marketHashName, priceUsd, volume, source);
 }
 
 function getPriceHistory(marketHashName, limit = 90) {
@@ -206,10 +259,9 @@ function getProfileStats(steamId) {
   let topPrice = -1;
 
   for (const item of items) {
-    const cached = getCachedPrice(item.market_hash_name);
-    if (!cached?.lowest_price) continue;
-    const price = parseFloat(String(cached.lowest_price).replace(/[^0-9.]/g, ''));
-    if (isNaN(price)) continue;
+    const cached = getSkinportCachedPrice(item.market_hash_name);
+    if (cached?.min_price == null) continue;
+    const price = cached.min_price;
     totalValue += price;
     if (price > topPrice) {
       topPrice = price;
@@ -245,6 +297,9 @@ module.exports = {
   getInventory,
   getCachedPrice,
   upsertPriceCache,
+  bulkUpsertSkinportPrices,
+  getSkinportCachedPrice,
+  isSkinportCacheFresh,
   recordPriceSnapshot,
   getPriceHistory,
   createAlert,

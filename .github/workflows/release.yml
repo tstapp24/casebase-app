@@ -47,4 +47,9 @@ jobs:
       - name: Publish draft release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release edit "${{ github.ref_name }}" --draft=false
+        run: |
+          if gh release view "${{ github.ref_name }}" --json isDraft --jq '.isDraft' | grep -q true; then
+            gh release edit "${{ github.ref_name }}" --draft=false
+          else
+            echo "Release ${{ github.ref_name }} not found or already published — skipping"
+          fi

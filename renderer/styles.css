@@ -568,6 +568,7 @@ input::placeholder { color: var(--text-muted); }
 
 .skin-price.loading { color: var(--text-muted); font-size: 12px; }
 .skin-price.error { color: var(--neon-orange); font-size: 11px; }
+.skin-price.not-listed { color: var(--text-muted); font-size: 11px; font-style: italic; }
 
 .not-marketable-badge {
   position: absolute;
