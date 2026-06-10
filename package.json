@@ -1,6 +1,6 @@
 {
   "name": "casebase",
-  "version": "1.3.0",
+  "version": "1.3.1",
   "description": "CS2 Skin Inventory Tracker",
   "main": "main/main.js",
   "scripts": {
@@ -61,7 +61,8 @@
       "category": "Utility"
     },
     "win": {
-      "target": ["nsis"]
+      "target": ["nsis"],
+      "publisherName": []
     },
     "nsis": {
       "oneClick": true,
